@@ -14,14 +14,14 @@
 //  by the Express.js error handling middleware.
 
 const asyncHandler = (requestHandler) => {
-  return (req, res, next) => {
+  return  (req, res, next) => {
     Promise.resolve(requestHandler(req, res, next)).catch((error) =>
       next(error)
     );
   };
 };
 
-export { asyncHandler };
+ export  {asyncHandler} ;
 
 //asyncHandler is higher order function -use as a parameter and return as variable
 
