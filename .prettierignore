@@ -1,0 +1,7 @@
+# while file you want to secure write here
+/.vscode
+/node_module
+./dist
+*.env
+.env
+.env.*
