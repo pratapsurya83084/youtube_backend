@@ -1,6 +1,6 @@
 import multer from "multer";
 
-//configuration = which place you can store file  i.e image url
+//configuration  compulesory= which place you can store file  i.e image url
 
 const storage = multer.diskStorage({
   //I can use diskStorage for url
