@@ -2,7 +2,7 @@ import { asyncHandler } from "../utiles/asyncHandler.js";
 import { ApiError } from "../utiles/ApiError.js";
 import { User } from "../models/user.model.js";
 import { uploadonCloudinary } from "../utiles/cloudinary.js";
-import {ApiResponse}   from '../utiles/ApiResponse.js'
+import { ApiResponse } from "../utiles/ApiResponse.js";
 //resgister user  method is used in router
 //if /register  url  then hit register method.
 const registerUser = asyncHandler(async (req, res) => {
@@ -30,7 +30,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   //check user is already existed or not in DB through username,email
   //User is model findOne is a searching method in DB
-  const existedUser = User.findOne({
+  const existedUser = await User.findOne({
     $or: [{ username }, { email }], //username,email is match then  return this user
   });
 
@@ -44,19 +44,30 @@ const registerUser = asyncHandler(async (req, res) => {
   //so multer gives file access
 
   //take file from frontend as a input
-  const avatarLocalPath = await req.files?.avatar[0]?.path; //path is coming from multer file
-  const coverimageLocalPath = await req.files?.coverImage[0]?.path;
+  const avatarLocalPath = await req.files?.avatar?.[0]?.path; //path is coming from multer file
+  // const coverimageLocalPath = await req.files?.coverImage[0]?.path;
   // console.log(avatar);
 
+  let coverImageLocalPath;
+  if (
+    req.files &&
+    Array.isArray(req.files.coverImage) &&
+    req.files.coverImage.length > 0
+  ) {
+    coverImageLocalPath = req.files.coverImage[0].path;
+    // console.log(coverImageLocalPath);
+  }
+  console.log(avatarLocalPath);
   //check avatar is existed or not,
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar is Required");
   }
+
   //if file is exist in avatarlocalFilePath ,then upload to cloudinary
   const avatar = await uploadonCloudinary(avatarLocalPath); //cloudinary upload img
 
   //if file is exist in coverImagelocalFilePath ,then upload to cloudinary
-  const coverimage = await uploadonCloudinary(coverimageLocalPath);
+  const coverImage = await uploadonCloudinary(coverImageLocalPath);
 
   //so avatar is required then again check the avatar is uploaded on cloudinary or  not  if no the throw err
   if (!avatar) {
@@ -65,28 +76,29 @@ const registerUser = asyncHandler(async (req, res) => {
 
   //step8-if create a user object -insert data, entry in DB
   //User is model name
-  const user = await User.create(
-    {
-      fullName,
-      avatar: avatar.url,
-      coverimage: coverimage?.url || "", //if coverimage is exists then url stored in DB but is not exist then empty ,because it is not required
-      email,
-      password,
-      username: username.toLowerCase(),
-    });
+  const user = await User.create({
+    fullName,
+    avatar: avatar.url,
+    coverImage: coverImage?.url || "", //if coverimage is exists then url stored in DB but is not exist then empty ,because it is not required
+    email,
+    password,
+    username: username.toLowerCase(),
+  });
 
-      
-    //user variable contained is stored all above data in db
-    //after stored mongooDB create auto id for each entry
-    //select keyword use to not select password and refreshtoken
+  //user variable contained is stored all above data in db
+  //after stored mongooDB create auto id for each entry
+  //select keyword use to not select password and refreshtoken
 
-     const createdUser=await User.findById(user._id).select(  
-      "-password -refreshToken"
-     )     
-     //using id check user is create or not
+  const createdUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
+  //using id check user is create or not
 
   if (!createdUser) {
-    throw new ApiError(500,"Something went wrong while registring the User...................")
+    throw new ApiError(
+      500,
+      "Something went wrong while registring the User..................."
+    );
   }
 
   //if user is created then send response successfull created
@@ -94,18 +106,11 @@ const registerUser = asyncHandler(async (req, res) => {
   //return response to created user
   return res.status(201).json(
     new ApiResponse(
-      200,   //statusCode
-      createdUser,// no pasword ,refreshToken , but all data
-       "User created successfully"   //message
-      
-      )
-  )
-  
-
-
-
- 
-
-  });
+      200, //statusCode
+      createdUser, // no pasword ,refreshToken , but all data
+      "User created successfully" //message
+    )
+  );
+});
 
 export { registerUser };
