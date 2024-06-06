@@ -3,6 +3,27 @@ import { ApiError } from "../utiles/ApiError.js";
 import { User } from "../models/user.model.js";
 import { uploadonCloudinary } from "../utiles/cloudinary.js";
 import { ApiResponse } from "../utiles/ApiResponse.js";
+
+//generated both tokens in user.model call and save refreshtokens in DB
+const generateAccessandRfereshToken = async (userId) => {
+  try {
+    const user = await User.findById(userId); //find userid and  DBid
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    //save user refreshTokens in the database
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false }); //without any validation direct save in DB refresgTokens
+    //after save the refreshTokens in the db return both tokens
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new ApiError(
+      500,
+      "Something Went wrong While generating refresh and access token "
+    );
+  }
+};
+
 //resgister user  method is used in router
 //if /register  url  then hit register method.
 const registerUser = asyncHandler(async (req, res) => {
@@ -113,4 +134,98 @@ const registerUser = asyncHandler(async (req, res) => {
   );
 });
 
-export { registerUser };
+//login user method
+const loginUser = asyncHandler(async (req, res) => {
+  //step1-take input from frontend ppassword,email req.body
+  //username and email check
+  //find the user in DB
+  //password check if no throw err
+  //if password is check ,generate refresh,access token and send use
+  //send tokens in cookies
+
+  const { email, password, username } = req.body;
+  //if user is not give email,password as a input then throw err
+  if (!(username || email)) {
+    throw new ApiError(400, "username and password is required");
+  }
+
+  //check registerd user or not if registerd user only login possible
+  //find in db ,username and email ,if no throw errr
+  const user = await User.findOne({ $or: [{ username }, { email }] });
+  if (!user) {
+    throw new ApiError(404, "user does not existed");
+  }
+
+  //check user password with bcrypt password use=isCorrectPassword is a function
+  const isPasswordvalid = await user.isPasswordCorrect(password); //we pass argu as a input through user .
+
+  if (!isPasswordvalid) {
+    throw new ApiError(401, "password is incorrect");
+  }
+
+  //if user password is correct then create refresh and  access token i create above generate method
+  const { accessToken, refreshToken } = await generateAccessandRfereshToken(
+    user._id
+  ); //after calling we get access ,refresh tokens
+
+  const loggedInuser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
+  //Send cookies i.e which info we send to the user
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+  //send response all ok
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        {  //data
+          user: loggedInuser,
+          accessToken,
+          refreshToken,
+        },
+        "User logged in successfully" //message
+      )
+    );
+});
+
+
+//logout method
+const logOutUser=asyncHandler(async(req,res)=>{
+//use Middleware
+await User.findByIdAndUpdate(
+  req.user._id,
+{
+  $set : {
+    refreshToken:undefined
+  }
+},
+{
+  new :true
+}
+)
+
+const options = {
+  httpOnly: true,
+  secure: true,
+};
+
+return res
+.status(200)
+.clearCookie("accessToken",options)
+.clearCookie("refreshToken",options)
+.json(new ApiResponse(200 ,{},"User logged Out success"))
+
+
+})
+
+
+
+
+export { registerUser, loginUser ,logOutUser};
