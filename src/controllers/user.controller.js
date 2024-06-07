@@ -197,35 +197,61 @@ const loginUser = asyncHandler(async (req, res) => {
 
 
 //logout method
-const logOutUser=asyncHandler(async(req,res)=>{
-//use Middleware
-await User.findByIdAndUpdate(
-  req.user._id,
-{
-  $set : {
-    refreshToken:undefined
+// const logOutUser=asyncHandler(async(req,res)=>{
+// //use Middleware
+// await User.findByIdAndUpdate(
+//   req.user._id,
+// {
+//   $set : {
+//     refreshToken:undefined
+//   }
+// },
+// {
+//   new :true
+// }
+// )
+
+// const options = {
+//   httpOnly: true,
+//   secure: true,
+// };
+
+// return res
+// .status(200)
+// .clearCookie("accessToken",options)
+// .clearCookie("refreshToken",options)
+// .json(new ApiResponse(200 ,{},"User logged Out success"))
+
+
+// })
+
+const logOutUser = asyncHandler(async (req, res) => {
+  if (!req.user || !req.user._id) {
+    return res.status(400).json(new ApiResponse(400, {}, "User not authenticated"));
   }
-},
-{
-  new :true
-}
-)
 
-const options = {
-  httpOnly: true,
-  secure: true,
-};
+  try {
+    await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: { refreshToken: undefined } },
+      { new: true }
+    );
 
-return res
-.status(200)
-.clearCookie("accessToken",options)
-.clearCookie("refreshToken",options)
-.json(new ApiResponse(200 ,{},"User logged Out success"))
+    const options = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    };
 
-
-})
-
-
+    return res
+      .status(200)
+      .clearCookie("accessToken", options)
+      .clearCookie("refreshToken", options)
+      .json(new ApiResponse(200, {}, "User logged out successfully"));
+  } catch (error) {
+    return res.status(500).json(new ApiResponse(500, {}, "Internal server error"));
+  }
+});
 
 
 export { registerUser, loginUser ,logOutUser};
