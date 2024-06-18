@@ -585,4 +585,5 @@ export {
   UpdateUserCoverImage,
   getUserChannelProfile,
   getWatchHistory,
+  currentUser
 };
